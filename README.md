@@ -1,6 +1,6 @@
 # Coursera Dump
 
-**A script to parse coursera.org courses info and write it into the Excel spreadsheet**
+**A script that parses the coursera.org courses info and writes it to the Excel spreadsheet**
 
 # How to Install
 
