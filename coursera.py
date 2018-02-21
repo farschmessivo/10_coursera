@@ -10,7 +10,7 @@ def create_parser():
     parser = argparse.ArgumentParser(
         description='Module get courses info.')
     parser.add_argument(
-        '-am', '--amount', default=20, type=int,
+        '-am', '--amount', default=5, type=int,
         help='How many courses check for info.')
     parser.add_argument(
         '-out', '--output', default='courses_info.xlsx',
