@@ -44,7 +44,6 @@ def get_course_info(course_page):
 
     for page in course_page:
         soup = BeautifulSoup(page, "lxml")
-
         grade = getattr(soup.find(
             "div", class_="ratings-text"), 'text', '0 stars')
         course_name = getattr(soup.find(
@@ -62,7 +61,6 @@ def get_course_info(course_page):
                                Start_date=startdate,
                                Amount_week='{} weeks'.format(amount_week))
 
-        print(courses_tuple)
         yield courses_tuple
 
 
