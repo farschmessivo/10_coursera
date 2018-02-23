@@ -33,7 +33,7 @@ def get_courses_pages_list(courses_url_list):
     return [requests.get(courses_url).text for courses_url in courses_url_list]
 
 
-def get_course_info(course_page):
+def get_courses_info(course_pages):
     course = namedtuple('course', [
         'Course_name',
         'Grade',
@@ -42,18 +42,18 @@ def get_course_info(course_page):
         'Amount_week',
     ])
 
-    for page in course_page:
-        soup = BeautifulSoup(page, "lxml")
+    for page in course_pages:
+        soup = BeautifulSoup(page, 'lxml')
         grade = getattr(soup.find(
-            "div", class_="ratings-text"), 'text', '0 stars')
+            'div', class_='ratings-text'), 'text', '0 stars')
         course_name = getattr(soup.find(
-            "h1", class_="title display-3-text"), 'text', 'No data')
+            'h1', class_='title display-3-text'), 'text', 'No data')
         startdate = getattr(soup.find(
-            "div", class_="startdate"), 'text', 'No data')
+            'div', class_='startdate'), 'text', 'No data')
         language = soup.find(
-            "div", class_="rc-Language").findAllNext(text=True)[1]
+            'div', class_='rc-Language').findAllNext(text=True)[1]
         amount_week = len(soup.find_all(
-            "div", class_="week-heading"))
+            'div', class_='week-heading'))
 
         courses_tuple = course(Course_name=course_name,
                                Grade=grade,
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     namespace = parser.parse_args()
     dest_filename = namespace.output
     amount = namespace.amount
-    course_page = get_courses_pages_list(get_courses_url_list(amount))
-    course_info = get_course_info(course_page)
+    course_pages = get_courses_pages_list(get_courses_url_list(amount))
+    course_info = get_courses_info(course_pages)
     output_courses_info = output_courses_info_to_xlsx(course_info)
     save_courses_info_to_xlsx(dest_filename, output_courses_info)

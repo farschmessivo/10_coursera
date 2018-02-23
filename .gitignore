@@ -1,0 +1,5 @@
+venv/
+.venv
+courses_info.xlsx
+*.xlsx
+coursera_working_version.py
