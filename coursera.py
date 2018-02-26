@@ -3,14 +3,13 @@ import argparse
 from lxml import etree
 from bs4 import BeautifulSoup
 from openpyxl import Workbook
-from collections import namedtuple
 
 
 def create_parser():
     parser = argparse.ArgumentParser(
         description='Module get courses info.')
     parser.add_argument(
-        '-am', '--amount', default=5, type=int,
+        '-am', '--amount', default=3, type=int,
         help='How many courses check for info.')
     parser.add_argument(
         '-out', '--output', default='courses_info.xlsx',
@@ -18,57 +17,63 @@ def create_parser():
     return parser
 
 
-def get_courses_url_list(amount):
-    url = 'https://www.coursera.org/sitemap~www~courses.xml'
+def fetch_the_page(url):
     response = requests.get(url).content
-    root = etree.fromstring(response)
+    xml_tree = etree.fromstring(response)
+    return xml_tree
+
+
+def parse_courses_page(xml_tree, amount):
     url_list = []
-    for url in root.getchildren():
+    for url in xml_tree.getchildren():
         for loc in url.getchildren():
             url_list.append(loc.text)
     return url_list[:amount]
 
 
-def get_courses_pages_list(courses_url_list):
-    return [requests.get(courses_url).text for courses_url in courses_url_list]
+def get_course_info(page):
+    course_info = {}
+    soup = BeautifulSoup(page, 'html.parser')
+
+    course_info['course_name'] = soup.find(
+        'h1', attrs={'class': 'title display-3-text'}).get_text()
+    course_info['language'] = soup.find(
+        'div', attrs={'class': 'rc-Language'}).get_text()
+    course_info['startdate'] = soup.find(
+        'div', attrs={'class': 'startdate'}).get_text()
+    course_info['amount_weeks'] = len(soup.find_all(
+        'div', attrs={'class': 'week-heading'}))
+    try:
+        course_info['rating'] = soup.find(
+            'div',
+            attrs={'class': 'ratings-text'}
+        ).get_text()
+    except AttributeError:
+        course_info['rating'] = 'No Data'
+
+    return course_info
 
 
-def get_courses_info(course_pages):
-    course = namedtuple('course', [
-        'Course_name',
-        'Grade',
-        'Language',
-        'Start_date',
-        'Amount_week',
-    ])
-
-    for page in course_pages:
-        soup = BeautifulSoup(page, 'lxml')
-        grade = getattr(soup.find(
-            'div', class_='ratings-text'), 'text', '0 stars')
-        course_name = getattr(soup.find(
-            'h1', class_='title display-3-text'), 'text', 'No data')
-        startdate = getattr(soup.find(
-            'div', class_='startdate'), 'text', 'No data')
-        language = soup.find(
-            'div', class_='rc-Language').findAllNext(text=True)[1]
-        amount_week = len(soup.find_all(
-            'div', class_='week-heading'))
-
-        courses_tuple = course(Course_name=course_name,
-                               Grade=grade,
-                               Language=language,
-                               Start_date=startdate,
-                               Amount_week='{} weeks'.format(amount_week))
-
-        yield courses_tuple
-
-
-def output_courses_info_to_xlsx(courses_tuple):
+def output_courses_info_to_xlsx(courses_info):
     wb = Workbook()
     sheet = wb.active
-    for row in courses_tuple:
-        sheet.append(row)
+    sheet.title = 'Coursera'
+    head_table = [
+        'Course Name',
+        'Language',
+        'Start Date',
+        'Duration (in weeks)',
+        'Rating'
+    ]
+    sheet.append(head_table)
+    for course in courses_info:
+        sheet.append([
+            course['course_name'],
+            course['language'],
+            course['startdate'],
+            course['amount_weeks'],
+            course['rating']
+        ])
     return wb
 
 
@@ -77,11 +82,18 @@ def save_courses_info_to_xlsx(dest_filename, wb):
 
 
 if __name__ == '__main__':
+    url = 'https://www.coursera.org/sitemap~www~courses.xml'
+    courses_info_list = []
     parser = create_parser()
     namespace = parser.parse_args()
     dest_filename = namespace.output
     amount = namespace.amount
-    course_pages = get_courses_pages_list(get_courses_url_list(amount))
-    course_info = get_courses_info(course_pages)
-    output_courses_info = output_courses_info_to_xlsx(course_info)
-    save_courses_info_to_xlsx(dest_filename, output_courses_info)
+    etree_object = fetch_the_page(url)
+    course_pages = parse_courses_page(etree_object, amount)
+
+    for page in course_pages:
+        course_page = requests.get(page).text
+        course_info = get_course_info(course_page)
+        courses_info_list.append(course_info)
+    save_courses_info_to_xlsx(dest_filename, output_courses_info_to_xlsx(courses_info_list))
+    print('The courses dump is saved to the {}'.format(dest_filename))
