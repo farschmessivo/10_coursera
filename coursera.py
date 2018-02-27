@@ -17,13 +17,13 @@ def create_parser():
     return parser
 
 
-def fetch_the_page(url):
-    response = requests.get(url).content
-    xml_tree = etree.fromstring(response)
+def fetch_the_xml_tree(url):
+    content = requests.get(url).content
+    xml_tree = etree.fromstring(content)
     return xml_tree
 
 
-def parse_courses_page(xml_tree, amount):
+def get_courses_list(xml_tree, amount):
     url_list = []
     for url in xml_tree.getchildren():
         for loc in url.getchildren():
@@ -36,20 +36,24 @@ def get_course_info(page):
     soup = BeautifulSoup(page, 'html.parser')
 
     course_info['course_name'] = soup.find(
-        'h1', attrs={'class': 'title display-3-text'}).get_text()
+        'h1', attrs={'class': 'title display-3-text'}
+    ).get_text()
     course_info['language'] = soup.find(
-        'div', attrs={'class': 'rc-Language'}).get_text()
+        'div', attrs={'class': 'rc-Language'}
+    ).get_text()
     course_info['startdate'] = soup.find(
-        'div', attrs={'class': 'startdate'}).get_text()
+        'div', attrs={'class': 'startdate'}
+    ).get_text()
     course_info['amount_weeks'] = len(soup.find_all(
-        'div', attrs={'class': 'week-heading'}))
+        'div', attrs={'class': 'week-heading'}
+    ))
     try:
         course_info['rating'] = soup.find(
             'div',
             attrs={'class': 'ratings-text'}
         ).get_text()
     except AttributeError:
-        course_info['rating'] = 'No Data'
+        course_info['rating'] = None
 
     return course_info
 
@@ -72,7 +76,7 @@ def output_courses_info_to_xlsx(courses_info):
             course['language'],
             course['startdate'],
             course['amount_weeks'],
-            course['rating']
+            course['rating'] or "No data"
         ])
     return wb
 
@@ -88,12 +92,16 @@ if __name__ == '__main__':
     namespace = parser.parse_args()
     dest_filename = namespace.output
     amount = namespace.amount
-    etree_object = fetch_the_page(url)
-    course_pages = parse_courses_page(etree_object, amount)
+    etree_object = fetch_the_xml_tree(url)
+    course_pages = get_courses_list(etree_object, amount)
 
     for page in course_pages:
         course_page = requests.get(page).text
         course_info = get_course_info(course_page)
         courses_info_list.append(course_info)
-    save_courses_info_to_xlsx(dest_filename, output_courses_info_to_xlsx(courses_info_list))
-    print('The courses dump is saved to the {}'.format(dest_filename))
+    save_courses_info_to_xlsx(
+        dest_filename,
+        output_courses_info_to_xlsx(courses_info_list)
+    )
+    print('The courses dump is saved to the {}'.format(dest_filename)
+          )
