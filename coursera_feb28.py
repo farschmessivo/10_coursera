@@ -12,7 +12,7 @@ def create_parser():
     parser.add_argument(
         '-am',
         '--amount',
-        default=20,
+        default=5,
         type=int,
         help='How many courses check for info.'
     )
@@ -25,14 +25,14 @@ def create_parser():
     return parser
 
 
-def fetch_the_content(url):
+def fetch_the_xml_tree(url):
     content = requests.get(url).content
-    return content
-
-
-def get_courses_url_list(content, amount):
-    url_list = []
     xml_tree = etree.fromstring(content)
+    return xml_tree
+
+
+def get_courses_list(xml_tree, amount):
+    url_list = []
     for url in xml_tree.getchildren():
         for loc in url.getchildren():
             url_list.append(loc.text)
@@ -100,17 +100,16 @@ if __name__ == '__main__':
     namespace = parser.parse_args()
     dest_filename = namespace.output
     amount = namespace.amount
-    etree_object = fetch_the_content(url)
-    page_urls = get_courses_url_list(etree_object, amount)
+    etree_object = fetch_the_xml_tree(url)
+    course_pages = get_courses_list(etree_object, amount)
 
-    for page in page_urls:
-        course_page = fetch_the_content(page)
+    for page in course_pages:
+        course_page = requests.get(page).text
         course_info = get_course_info(course_page)
         courses_info_list.append(course_info)
     save_courses_info_to_xlsx(
         dest_filename,
         output_courses_info_to_xlsx(courses_info_list)
     )
-    print(
-        'The courses dump is saved to the {}'.format(dest_filename)
-    )
+    print('The courses dump is saved to the {}'.format(dest_filename)
+          )
